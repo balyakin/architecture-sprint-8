@@ -11,6 +11,7 @@ services:
       - ./postgres-keycloak-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+
   keycloak:
     image: quay.io/keycloak/keycloak:21.1
     environment:
@@ -20,7 +21,7 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
       KC_DB_USERNAME: keycloak_user
       KC_DB_PASSWORD: keycloak_password
-    command: 
+    command:
       - start-dev
       - --import-realm
     volumes:
@@ -29,6 +30,7 @@ services:
       - "8080:8080"
     depends_on:
       - keycloak_db
+
   frontend:
     build:
       context: ./frontend
@@ -41,22 +43,23 @@ services:
       REACT_APP_KEYCLOAK_REALM: reports-realm
       REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
 
-
   api:
     build:
       context: ./api
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
-      KEYCLOAK_PUBLIC_KEY: |
-        -----BEGIN PUBLIC KEY-----
-        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0djHTSGmhjvmbmbxi6RF
-        DxqKIJDdRkSQGhUgy2xO+Lg9ZbKKPKjElFI9w0xxRA9p7sDSVNo0KYfQmKbahues
-        ry4+LfdKDf+pn4dBBpZMGDFHP7Z6uNnqNRsKx2UEFjD+FHQo6sqimpcb3G49it/I
-        5Nro7fQqEwaVr1SVCoASanDPYSmgmTlfOZdbz0hDmFIjixnAS8HrgUVP70jznTW8
-        lPwj0sSYzoAlLCTQabTA+HT5oZ4GCSeUletYEWMd+52BMOm5eyzf8OMBhp203SB7
-        cKFUcWnKWiTdSuCqgEPoLPNvzr9vWycO0lZOUytdbehSKa8em9FRATyYfGAKpaSb
-        OQIDAQAB
-        -----END PUBLIC KEY-----
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: reports-realm
+      CLIENT_ID: reports-frontend
     depends_on:
       - keycloak
+    entrypoint: >
+      sh -c "
+      until curl -s http://keycloak:8080/realms/reports-realm/protocol/openid-connect/certs; do
+        echo 'Waiting for Keycloak to be ready...';
+        sleep 5;
+      done;
+      exec uvicorn main:app --host 0.0.0.0 --port 8000
+      "
