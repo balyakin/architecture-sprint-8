@@ -12,6 +12,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# RUN npm install keycloak-js@latest
+
 # Build the app
 RUN npm run build
 
